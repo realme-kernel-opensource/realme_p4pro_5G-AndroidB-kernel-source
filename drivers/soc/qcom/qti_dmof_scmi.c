@@ -20,6 +20,8 @@
 #include <linux/slab.h>
 #include <linux/wait.h>
 #include <uapi/linux/sched/types.h>
+#include <linux/cpu_phys_log_map.h>
+#include <soc/qcom/socinfo.h>
 
 #define DMOF_ALGO_STR	(0x444D4F46) /* DMOF (Disable Memcpy Optimization Feature) ASCII */
 
@@ -183,9 +185,10 @@ repeat:
 		if (fds->ret < 0)
 			break;
 
-		BUG_ON(smp_processor_id() != cpu);
+		BUG_ON(get_cpu() != cpu);
+		put_cpu();
 
-		buf[0] = cpu;
+		buf[0] = cpu_logical_to_phys(cpu);
 		switch (fds->cmd) {
 		case COMMAND_INIT:
 			break;
@@ -269,8 +272,12 @@ static int cpu_down_notifier(unsigned int cpu)
 static int cpu_up_notifier(unsigned int cpu)
 {
 	struct qcom_dmof_dd *fds = qcom_dmof_dd;
+	struct task_struct *tsk;
 
 	mutex_lock(&fds->lock);
+	tsk = fds->store[cpu];
+	kthread_bind_mask(tsk, cpumask_of(cpu));
+
 	if (fds->curr_val[cpu] == fds->val)
 		goto cpu_on;
 
@@ -402,7 +409,17 @@ static struct platform_driver qcom_dmof_driver = {
 static int __init qcom_dmof_scmi_driver_init(void)
 {
 	int err;
+	const char *soc_name = socinfo_get_id_string();
 
+	if (soc_name == NULL)
+	    goto exit;
+
+	if (!strncmp(soc_name, "SUN", strlen("SUN")) || !strncmp(soc_name, "SUNP", strlen("SUNP")))
+	    goto entry;
+	else
+	    goto exit;
+
+entry:
 	err = platform_driver_register(&qcom_dmof_driver);
 	if (err)
 		return err;
@@ -415,6 +432,7 @@ static int __init qcom_dmof_scmi_driver_init(void)
 		return PTR_ERR(qcom_dmof_pdev);
 	}
 
+exit:
 	return 0;
 }
 

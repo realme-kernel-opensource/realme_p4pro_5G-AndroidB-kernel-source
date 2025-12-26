@@ -8,6 +8,7 @@
 #include <linux/sched/affinity.h>
 #include <linux/sched/autogroup.h>
 #include <linux/sched/cpufreq.h>
+#include <linux/sched/cputime.h>
 #include <linux/sched/deadline.h>
 #include <linux/sched.h>
 #include <linux/sched/loadavg.h>
@@ -186,6 +187,7 @@ static inline int idle_policy(int policy)
 {
 	return policy == SCHED_IDLE;
 }
+
 static inline int fair_policy(int policy)
 {
 	return policy == SCHED_NORMAL || policy == SCHED_BATCH;

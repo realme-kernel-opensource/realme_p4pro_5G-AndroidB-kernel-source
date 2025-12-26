@@ -159,6 +159,9 @@ xhci_sideband_remove_endpoint(struct xhci_sideband *sb,
 	struct xhci_virt_ep *ep;
 	unsigned int ep_index;
 
+	if (!sb)
+		return -ENODEV;
+
 	mutex_lock(&sb->mutex);
 	ep_index = xhci_get_endpoint_index(&host_ep->desc);
 	ep = sb->eps[ep_index];
@@ -403,8 +406,13 @@ EXPORT_SYMBOL_GPL(xhci_sideband_register);
 void
 xhci_sideband_unregister(struct xhci_sideband *sb)
 {
-	struct xhci_hcd *xhci = sb->xhci;
+	struct xhci_hcd *xhci;
 	int i;
+
+	if (!sb)
+		return;
+
+	xhci = sb->xhci;
 
 	mutex_lock(&sb->mutex);
 	for (i = 0; i < EP_CTX_PER_DEV; i++)

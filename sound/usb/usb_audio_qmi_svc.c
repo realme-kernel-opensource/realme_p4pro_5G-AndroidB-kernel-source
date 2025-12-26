@@ -915,6 +915,11 @@ static void uaudio_dev_intf_cleanup(struct usb_device *udev,
 	info->xfer_buf_pa = 0;
 
 	info->in_use = false;
+
+#ifdef OPLUS_FEATURE_CHG_BASIC /* CR#4006716 */
+	uaudio_dbg("release resources: intf# %d card# %d\n",
+			info->intf_num, info->pcm_card_num);
+#endif
 }
 
 static void uaudio_event_ring_cleanup_free(struct uaudio_dev *dev)
@@ -943,8 +948,10 @@ static void uaudio_dev_cleanup(struct uaudio_dev *dev)
 		if (!dev->info[if_idx].in_use)
 			continue;
 		uaudio_dev_intf_cleanup(dev->udev, &dev->info[if_idx]);
+#ifndef OPLUS_FEATURE_CHG_BASIC /* CR#4006716 */
 		uaudio_dbg("release resources: intf# %d card# %d\n",
 				dev->info[if_idx].intf_num, dev->card_num);
+#endif
 	}
 
 	dev->num_intf = 0;
@@ -972,6 +979,10 @@ static void uaudio_connect(struct snd_usb_audio *chip)
 
 	uadev[chip->card->number].chip = chip;
 	uadev[chip->card->number].sb = sb;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	uaudio_info("WA for hang headset!");
+	uadev[chip->card->number].chip->quirk_flags |= QUIRK_FLAG_CTL_MSG_DELAY_1M;
+#endif
 }
 
 static void uaudio_disconnect(struct snd_usb_audio *chip)
@@ -1488,8 +1499,10 @@ response:
 			uaudio_dev_intf_cleanup(
 					uadev[pcm_card_num].udev,
 					info);
+#ifndef OPLUS_FEATURE_CHG_BASIC /* CR#4006716 */
 			uaudio_dbg("release resources: intf# %d card# %d\n",
 					info->intf_num, pcm_card_num);
+#endif
 		}
 		if (atomic_dec_and_test(&uadev[pcm_card_num].in_use))
 			uaudio_dev_release(&uadev[pcm_card_num]);

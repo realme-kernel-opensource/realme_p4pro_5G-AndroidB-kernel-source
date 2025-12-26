@@ -126,18 +126,22 @@ filegroup(
         "android/abi_gki_aarch64_mtk",
         "android/abi_gki_aarch64_mtktv",
         "android/abi_gki_aarch64_nothing",
+        "android/abi_gki_aarch64_nvidia",
         "android/abi_gki_aarch64_oplus",
+        "android/abi_gki_aarch64_paragon",
         "android/abi_gki_aarch64_pixel",
         "android/abi_gki_aarch64_pixel_watch",
         "android/abi_gki_aarch64_qcom",
         "android/abi_gki_aarch64_sunxi",
         "android/abi_gki_aarch64_tcl",
+        "android/abi_gki_aarch64_transsion",
         "android/abi_gki_aarch64_tuxera",
         "android/abi_gki_aarch64_type_visibility",
         "android/abi_gki_aarch64_unisoc",
         "android/abi_gki_aarch64_virtual_device",
         "android/abi_gki_aarch64_vivo",
         "android/abi_gki_aarch64_xiaomi",
+        "android/abi_gki_aarch64_xiaomi2",
     ],
     visibility = ["//visibility:public"],
 )
@@ -167,6 +171,23 @@ define_common_kernels(target_configs = {
         "protected_modules_list": ":gki_aarch64_protected_modules",
         "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
         "make_goals": _GKI_AARCH64_MAKE_GOALS,
+        "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
+        "extra_dist": [
+            ":test_mappings_zip",
+            ":tests_zip_arm64",
+        ],
+    },
+    "kernel_aarch64_autofdo": {
+        "kmi_symbol_list_strict_mode": True,
+        "kmi_symbol_list": "android/abi_gki_aarch64",
+        "additional_kmi_symbol_lists": [":aarch64_additional_kmi_symbol_lists"],
+        "trim_nonlisted_kmi": True,
+        "protected_exports_list": "android/abi_gki_protected_exports_aarch64",
+        "protected_modules_list": ":gki_aarch64_protected_modules",
+        "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
+        "make_goals": _GKI_AARCH64_MAKE_GOALS,
+        "clang_autofdo_profile": ":android/gki/aarch64/afdo/kernel.afdo",
+        "defconfig_fragments": ["arch/arm64/configs/autofdo_gki.fragment"],
         "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
         "extra_dist": [
             ":test_mappings_zip",
@@ -221,6 +242,24 @@ kernel_build(
     page_size = "16k",
 )
 
+kernel_build(
+    name = "kernel_aarch64_microdroid_minimal",
+    srcs = ["//common:kernel_aarch64_sources"],
+    outs = [
+        "Image",
+        "System.map",
+        "modules.builtin",
+        "modules.builtin.modinfo",
+        "vmlinux",
+        "vmlinux.symvers",
+    ],
+    build_config = "build.config.microdroid.aarch64",
+    defconfig_fragments = ["arch/arm64/configs/microdroid_minimal.fragment"],
+    make_goals = [
+        "Image",
+    ],
+)
+
 copy_to_dist_dir(
     name = "kernel_aarch64_microdroid_16k_dist",
     data = [
@@ -237,6 +276,16 @@ copy_to_dist_dir(
         ":kernel_aarch64_microdroid",
     ],
     dist_dir = "out/kernel_aarch64_microdroid/dist",
+    flat = True,
+    log = "info",
+)
+
+copy_to_dist_dir(
+    name = "kernel_aarch64_microdroid_minimal_dist",
+    data = [
+        ":kernel_aarch64_microdroid_minimal",
+    ],
+    dist_dir = "out/kernel_aarch64_microdroid_minimal/dist",
     flat = True,
     log = "info",
 )
@@ -493,6 +542,8 @@ _DB845C_MODULE_OUTS = [
     "sound/soc/qcom/snd-soc-qcom-sdw.ko",
     "sound/soc/qcom/snd-soc-sdm845.ko",
     "sound/soc/qcom/snd-soc-sm8250.ko",
+    "kernel/oplus_cpu/thermal/horae_shell_temp.ko",
+    "kernel/oplus_cpu/waker_identify/oplus_bsp_waker_identify.ko",
 ]
 
 _DB845C_WATCHDOG_MODULE_OUTS = [
@@ -585,6 +636,7 @@ copy_to_dist_dir(
         ":kernel_aarch64",
         ":kernel_aarch64_modules",
         ":kernel_aarch64_additional_artifacts",
+        ":tests_zip_arm64",
     ],
     dist_dir = "out/db845/dist",
     flat = True,
@@ -650,8 +702,8 @@ _ROCKPI4_MODULE_OUTS = [
     "drivers/thermal/rockchip_thermal.ko",
     "drivers/usb/host/ohci-hcd.ko",
     "drivers/usb/host/ohci-platform.ko",
-    "drivers/virtio/virtio_pci_legacy_dev.ko",
     "net/core/failover.ko",
+    "kernel/oplus_cpu/waker_identify/oplus_bsp_waker_identify.ko",
 ]
 
 _ROCKPI4_WATCHDOG_MODULE_OUTS = [
@@ -745,6 +797,7 @@ kernel_build(
     build_config = "build.config.gki.aarch64.fips140",
     kmi_symbol_list = "android/abi_gki_aarch64_fips140",
     module_outs = ["crypto/fips140.ko"],
+    strip_modules = True,
 )
 
 kernel_abi(
@@ -897,6 +950,16 @@ pkg_install(
     visibility = ["//visibility:private"],
 )
 
+py_library(
+    name = "kunit_parser",
+    srcs = [
+        "tools/testing/kunit/kunit_parser.py",
+        "tools/testing/kunit/kunit_printer.py",
+    ],
+    imports = ["tools/testing/kunit"],
+    visibility = ["//visibility:public"],
+)
+
 # DDK Headers
 # All headers. These are the public targets for DDK modules to use.
 alias(
@@ -940,6 +1003,26 @@ ddk_headers(
     visibility = ["//visibility:public"],
 )
 
+# oplus modules depend on ack need headers add here
+# globs() for all architectures
+filegroup(
+    name = "all_headers_allowlist_common_globs_oplus",
+    srcs = glob([
+        "kernel/**/*.h",
+        "fs/**/*.h",
+        "**/**/*.h",
+        "scripts/dtc/libfdt/*.h",
+        "mm/*.h",
+    ]),
+    visibility = ["//visibility:private"],
+)
+# oplus modules depend on ack need directory add here
+linux_includes_oplus = [
+    "fs/proc",
+    "mm",
+    ".",
+]
+
 ddk_headers_archive(
     name = "kernel_x86_64_ddk_headers_archive",
     srcs = [
@@ -959,8 +1042,10 @@ ddk_headers(
         "drivers/usb/core/usb.h",
         "drivers/usb/host/pci-quirks.h",
         "drivers/usb/host/xhci.h",
+        "drivers/usb/host/xhci-caps.h",
         "drivers/usb/host/xhci-ext-caps.h",
         "drivers/usb/host/xhci-plat.h",
+        "drivers/usb/host/xhci-port.h",
     ],
     linux_includes = [
         "drivers/usb",
@@ -976,13 +1061,18 @@ ddk_headers(
     hdrs = [
         "drivers/dma-buf/heaps/deferred-free-helper.h",
         "drivers/extcon/extcon.h",
+        "drivers/pci/controller/dwc/pcie-designware.h",
         "drivers/thermal/thermal_core.h",
         "drivers/thermal/thermal_netlink.h",
+        "drivers/ufs/core/ufshcd-crypto.h",
+        "drivers/ufs/core/ufshcd-priv.h",
+        "drivers/ufs/host/ufshcd-pltfrm.h",
         "drivers/usb/dwc3/core.h",
         "sound/usb/card.h",
         "sound/usb/usbaudio.h",
         ":all_headers_allowlist_aarch64_globs",
         ":all_headers_allowlist_common_globs",
+        ":all_headers_allowlist_common_globs_oplus",
         ":xhci_headers",
     ],
     # The list of include directories where source files can #include headers
@@ -993,12 +1083,14 @@ ddk_headers(
         "arch/arm64/include/uapi",
         "drivers/dma-buf",
         "drivers/extcon",
+        "drivers/pci/controller/dwc",
         "drivers/thermal",
+        "drivers/ufs",
         "drivers/usb",
         "sound/usb",
         "include",
         "include/uapi",
-    ],
+    ] + linux_includes_oplus,
     visibility = ["//visibility:private"],
 )
 
@@ -1400,6 +1492,28 @@ cc_binary_with_abi(
         ":kselftest_futex_headers_lib",
         ":kselftest_headers_lib",
     ],
+)
+
+cc_library(
+    name = "kselftest_memfd",
+    srcs = ["tools/testing/selftests/memfd/common.c"],
+    hdrs = ["tools/testing/selftests/memfd/common.h"],
+    copts = _KSELFTEST_COPTS,
+    visibility = ["//visibility:private"],
+    deps = [
+        ":kselftest_headers_lib",
+    ],
+)
+
+cc_binary_with_abi(
+    name = "kselftest_memfd_test",
+    srcs = ["tools/testing/selftests/memfd/memfd_test.c"],
+    copts = _KSELFTEST_COPTS,
+    includes = ["tools/testing/selftests"],
+    path_prefix = _KSELFTEST_DIR,
+    target_compatible_with = ["@platforms//os:android"],
+    visibility = ["//visibility:private"],
+    deps = [":kselftest_memfd"],
 )
 
 cc_binary_with_abi(
@@ -2111,6 +2225,7 @@ android_filegroup(
         ":kselftest_futex_futex_wait_x86_64",
         ":kselftest_gen_config",
         ":kselftest_kcmp_kcmp_test_x86_64",
+        ":kselftest_memfd_test_x86_64",
         ":kselftest_mm_compaction_test_x86_64",
         ":kselftest_mm_hugepage_mmap_x86_64",
         ":kselftest_mm_hugepage_shm_x86_64",
@@ -2315,6 +2430,7 @@ android_filegroup(
         ":kselftest_futex_futex_wait_wouldblock_arm64",
         ":kselftest_gen_config",
         ":kselftest_kcmp_kcmp_test_arm64",
+        ":kselftest_memfd_test_arm64",
         ":kselftest_mm_compaction_test_arm64",
         ":kselftest_mm_hugepage_mmap_arm64",
         ":kselftest_mm_hugepage_shm_arm64",

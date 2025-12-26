@@ -966,6 +966,7 @@ static int update_bw_hwmon(struct bw_hwmon *hw)
 
 	/* governor update and commit */
 	mutex_lock(&node->update_lock);
+
 	if (bwmon_update_cur_freq(node))
 		ret = qcom_dcvs_update_votes(dev_name(hw->dev),
 					node->cur_freqs,
